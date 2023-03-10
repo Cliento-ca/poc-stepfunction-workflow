@@ -1,0 +1,55 @@
+{
+    "Comment": "Task state machine",
+    "StartAt": "Pending",
+    "States": {
+        "Pending": {
+            "Type": "Task",
+            "Resource": "${GetEntityStateFunction}",
+            "Parameters": {
+                "workflowId.$": "$.workflowId",
+                "entityType": "task",
+                "entityId.$": "$.taskId"
+            },
+            "ResultPath": "$.taskState",
+            "Next": "CheckPending"
+        },
+        "CheckPending": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.taskState",
+                    "StringEquals": "Pending",
+                    "Next": "Pending"
+                },
+                {
+                    "Variable": "$.taskState",
+                    "StringEquals": "Active",
+                    "Next": "Active"
+                }
+            ],
+            "Default": "Closed"
+        },
+        "Active": {
+            "Type": "Task",
+            "Resource": "${UpdateEntityStateFunction}",
+            "Parameters": {
+                "workflowId.$": "$.workflowId",
+                "entityType": "task",
+                "entityId.$": "$.taskId",
+                "state": "Active"
+            },
+            "End": true
+        },
+        "Closed": {
+            "Type": "Task",
+            "Resource": "${UpdateEntityStateFunction}",
+            "Parameters": {
+                "workflowId.$": "$.workflowId",
+                "entityType": "task",
+                "entityId.$": "$.taskId",
+                "state": "Closed"
+            },
+            "End": true
+        }
+    }
+}

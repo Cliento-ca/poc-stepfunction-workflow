@@ -1,0 +1,49 @@
+{
+    "StartAt": "InitWorkflow",
+    "States": {
+        "InitWorkflow": {
+            "Type": "Task",
+            "Resource": "${InitWorkflowFunctionArn}",
+            "Next": "WaitForTaskUpdate"
+        },
+        "WaitForTaskUpdate": {
+            "Type": "Wait",
+            "Seconds": 31536000,
+            "Next": "EvaluateTasksFunction"
+        },
+        "EvaluateTasksFunction": {
+            "Type": "Task",
+            "Resource": "${EvaluateTaskFunctionArn}",
+            "Next": "EvaluateSubworkflowsFunction"
+        },
+        "EvaluateSubworkflowsFunction": {
+            "Type": "Task",
+            "Resource": "${EvaluateSubworkflowFunctionArn}",
+            "Next": "EvaluatePhasesFunction"
+        },
+        "EvaluatePhasesFunction": {
+            "Type": "Task",
+            "Resource": "${EvaluatePhaseFunctionArn}",
+            "Next": "CheckIfAllPhasesClosed"
+        },
+        "CheckIfAllPhasesClosed": {
+            "Type": "Task",
+            "Resource": "${CheckPhasesClosedArn}",
+            "Next": "ShouldWaitForTaskUpdate"
+        },
+        "ShouldWaitForTaskUpdate": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.allPhasesClosed",
+                    "BooleanEquals": true,
+                    "Next": "WorkflowComplete"
+                }
+            ],
+            "Default": "WaitForTaskUpdate"
+        },
+        "WorkflowComplete": {
+            "Type": "Succeed"
+        }
+    }
+}

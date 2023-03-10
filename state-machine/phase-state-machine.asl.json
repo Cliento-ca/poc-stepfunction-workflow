@@ -1,0 +1,75 @@
+{
+    "Comment": "Phase State Machine",
+    "StartAt": "Pending",
+    "States": {
+        "Pending": {
+            "Type": "Task",
+            "Resource": "${GetEntityStateFunction}",
+            "InputPath": "$.Input",
+            "ResultPath": "$.state",
+            "Next": "CheckPrerequisites"
+        },
+        "CheckPrerequisites": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.state",
+                    "StringEquals": "CLOSED",
+                    "Next": "Closed"
+                },
+                {
+                    "Variable": "$.prerequisitePhases",
+                    "StringEquals": "CLOSED",
+                    "Next": "SubWorkflows"
+                }
+            ],
+            "Default": "Pending"
+        },
+        "SubWorkflows": {
+            "Type": "Parallel",
+            "ResultPath": "$.subworkflows",
+            "Branches": [
+                {
+                    "StartAt": "SubWorkflow",
+                    "States": {
+                        "SubWorkflow": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::states:startExecution",
+                            "Parameters": {
+                                "StateMachineArn": "${SubWorkflowStateMachine}",
+                                "Input": {
+                                    "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
+                                }
+                            },
+                            "End": true
+                        }
+                    }
+                }
+            ],
+            "Next": "Active"
+        },
+        "Active": {
+            "Type": "Task",
+            "Resource": "${UpdateEntityStateFunction}",
+            "InputPath": "$.Input",
+            "Next": "CheckSubWorkflowState"
+        },
+        "CheckSubWorkflowState": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.subworkflows",
+                    "BooleanEquals": true,
+                    "Next": "Closed"
+                }
+            ],
+            "Default": "Active"
+        },
+        "Closed": {
+            "Type": "Task",
+            "Resource": "${UpdateEntityStateFunction}",
+            "InputPath": "$.Input",
+            "End": true
+        }
+    }
+}

@@ -1,0 +1,262 @@
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+    Function:
+        Timeout: 5
+        CodeUri: functions/
+        Runtime: nodejs16.x
+        MemorySize: 512
+
+Resources:
+    StateMachineRole:
+        Type: AWS::IAM::Role
+        Properties:
+            RoleName: StateMachineRole
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                    - Effect: Allow
+                      Principal:
+                          Service: states.amazonaws.com
+                      Action: sts:AssumeRole
+            ManagedPolicyArns:
+                - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+            Policies:
+                - PolicyName: MyStateMachinePolicy
+                  PolicyDocument:
+                      Version: '2012-10-17'
+                      Statement:
+                          - Effect: Allow
+                            Action:
+                                - logs:CreateLogGroup
+                                - logs:CreateLogStream
+                                - logs:PutLogEvents
+                            Resource: '*'
+
+    WorkflowStateMachine:
+        Type: AWS::Serverless::StateMachine
+        Properties:
+            DefinitionUri: state-machine/workflow-state-machine.asl.json
+            Role: !GetAtt StateMachineRole.Arn
+            Tracing:
+                Enabled: true
+            DefinitionSubstitutions:
+                PhaseStateMachine: !Ref PhaseStateMachine
+    PhaseStateMachine:
+        Type: AWS::Serverless::StateMachine
+        Properties:
+            DefinitionUri: state-machine/phase-state-machine.asl.json
+            Role: !GetAtt StateMachineRole.Arn
+            Tracing:
+                Enabled: true
+            DefinitionSubstitutions:
+                GetEntityStateFunction: !GetAtt GetEntityStateFunction.Arn
+                UpdateEntityStateFunction: !GetAtt UpdateEntityStateFunction.Arn
+                SubWorkflowStateMachine: !Ref SubWorkflowStateMachine
+    SubWorkflowStateMachine:
+        Type: AWS::Serverless::StateMachine
+        Properties:
+            DefinitionUri: state-machine/subworkflow-state-machine.asl.json
+            Role: !GetAtt StateMachineRole.Arn
+            Tracing:
+                Enabled: true
+            DefinitionSubstitutions:
+                GetEntityStateFunction: !GetAtt GetEntityStateFunction.Arn
+                UpdateEntityStateFunction: !GetAtt UpdateEntityStateFunction.Arn
+                TaskStateMachine: !Ref TaskStateMachine
+    TaskStateMachine:
+        Type: AWS::Serverless::StateMachine
+        Properties:
+            DefinitionUri: state-machine/task-state-machine.asl.json
+            Role: !GetAtt StateMachineRole.Arn
+            Tracing:
+                Enabled: true
+            DefinitionSubstitutions:
+                GetEntityStateFunction: !GetAtt GetEntityStateFunction.Arn
+                UpdateEntityStateFunction: !GetAtt UpdateEntityStateFunction.Arn
+
+    GetEntityStateFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            Policies:
+                - DynamoDBCrudPolicy: #could be read only
+                      TableName: !Ref WorkflowTable
+                - AWSLambdaBasicExecutionRole
+            Handler: get-entity-state.handler
+            Environment:
+                Variables:
+                    TABLE_NAME: !Ref WorkflowTable
+        Metadata:
+            BuildMethod: esbuild
+            BuildProperties:
+                Minify: true
+                Target: 'es2020'
+                Sourcemap: true
+                External:
+                    - 'aws-sdk'
+                EntryPoints:
+                    - get-entity-state.ts
+    UpdateEntityStateFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            Policies:
+                - DynamoDBCrudPolicy: #could be read only
+                      TableName: !Ref WorkflowTable
+                - AWSLambdaBasicExecutionRole
+            Handler: update-entity-state.handler
+            Environment:
+                Variables:
+                    TABLE_NAME: !Ref WorkflowTable
+        Metadata:
+            BuildMethod: esbuild
+            BuildProperties:
+                Minify: true
+                Target: 'es2020'
+                Sourcemap: true
+                External:
+                    - 'aws-sdk'
+                EntryPoints:
+                    - update-entity-state.ts
+    # InitWorkflowFunction:
+    #     Type: AWS::Serverless::Function
+    #     Properties:
+    #         Policies:
+    #             - DynamoDBCrudPolicy:
+    #                   TableName: !Ref WorkflowTable
+    #             - AWSLambdaBasicExecutionRole
+    #         Handler: init-workflow.handler
+    #     Metadata:
+    #         BuildMethod: esbuild
+    #         BuildProperties:
+    #             Minify: true
+    #             Target: 'es2020'
+    #             Sourcemap: true
+    #             External:
+    #                 - 'aws-sdk'
+    #             EntryPoints:
+    #                 - init-workflow.ts
+
+    # EvaluateTaskFunction:
+    #     Type: AWS::Serverless::Function
+    #     Properties:
+    #         Policies:
+    #             - DynamoDBCrudPolicy:
+    #                   TableName: !Ref WorkflowTable
+    #             - AWSLambdaBasicExecutionRole
+    #         Handler: evaluate-task.handler
+    #     Metadata:
+    #         BuildMethod: esbuild
+    #         BuildProperties:
+    #             Minify: true
+    #             Target: 'es2020'
+    #             Sourcemap: true
+    #             External:
+    #                 - 'aws-sdk'
+    #             EntryPoints:
+    #                 - evaluate-task.ts
+
+    # EvaluateSubworkflowFunction:
+    #     Type: AWS::Serverless::Function
+    #     Properties:
+    #         Policies:
+    #             - DynamoDBCrudPolicy:
+    #                   TableName: !Ref WorkflowTable
+    #             - AWSLambdaBasicExecutionRole
+    #         Handler: evaluate-subworkflow.handler
+    #     Metadata:
+    #         BuildMethod: esbuild
+    #         BuildProperties:
+    #             Minify: true
+    #             Target: 'es2020'
+    #             Sourcemap: true
+    #             External:
+    #                 - 'aws-sdk'
+    #             EntryPoints:
+    #                 - evaluate-subworkflow.ts
+
+    # EvaluatePhaseFunction:
+    #     Type: AWS::Serverless::Function
+    #     Properties:
+    #         Policies:
+    #             - DynamoDBCrudPolicy:
+    #                   TableName: !Ref WorkflowTable
+    #             - AWSLambdaBasicExecutionRole
+    #         Handler: evaluate-phase.handler
+    #     Metadata:
+    #         BuildMethod: esbuild
+    #         BuildProperties:
+    #             Minify: true
+    #             Target: 'es2020'
+    #             Sourcemap: true
+    #             External:
+    #                 - 'aws-sdk'
+    #             EntryPoints:
+    #                 - evaluate-phase.ts
+
+    # CheckPhasesClosed:
+    #     Type: AWS::Serverless::Function
+    #     Properties:
+    #         Policies:
+    #             - DynamoDBCrudPolicy:
+    #                   TableName: !Ref WorkflowTable
+    #             - AWSLambdaBasicExecutionRole
+    #         Handler: check-phases-closed.handler
+    #     Metadata:
+    #         BuildMethod: esbuild
+    #         BuildProperties:
+    #             Minify: true
+    #             Target: 'es2020'
+    #             Sourcemap: true
+    #             External:
+    #                 - 'aws-sdk'
+    #             EntryPoints:
+    #                 - check-phases-closed.ts
+
+    # StreamProcessorFunction:
+    #     Type: AWS::Serverless::Function
+    #     Properties:
+    #         Policies:
+    #             - DynamoDBCrudPolicy:
+    #                   TableName: !Ref WorkflowTable
+    #             - AWSLambdaBasicExecutionRole
+    #             - StepFunctionsExecutionPolicy:
+    #                   StateMachineName: !Ref WilburStateMachine
+    #         Handler: process-stream.handler
+    #         Environment:
+    #             Variables:
+    #                 STATE_MACHINE_ARN: !Ref WilburStateMachine
+    #         Events:
+    #             Stream:
+    #                 Type: DynamoDB
+    #                 Properties:
+    #                     Stream: !GetAtt WorkflowTable.StreamArn
+    #                     BatchSize: 100
+    #                     StartingPosition: LATEST
+    #     Metadata:
+    #         BuildMethod: esbuild
+    #         BuildProperties:
+    #             Minify: true
+    #             Target: 'es2020'
+    #             Sourcemap: true
+    #             External:
+    #                 - 'aws-sdk'
+    #             EntryPoints:
+    #                 - process-stream.ts
+
+    WorkflowTable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+            TableName: workflow-table
+            AttributeDefinitions:
+                - AttributeName: PK
+                  AttributeType: S
+                - AttributeName: SK
+                  AttributeType: S
+            KeySchema:
+                - AttributeName: PK
+                  KeyType: HASH
+                - AttributeName: SK
+                  KeyType: RANGE
+            BillingMode: PAY_PER_REQUEST
+            StreamSpecification:
+                StreamViewType: NEW_AND_OLD_IMAGES

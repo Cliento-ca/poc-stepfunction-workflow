@@ -1,0 +1,64 @@
+{
+    "Comment": "SubWorkflow State Machine",
+    "StartAt": "Pending",
+    "States": {
+        "Pending": {
+            "Type": "Task",
+            "Resource": "${GetEntityStateFunction}",
+            "InputPath": "$.Input",
+            "ResultPath": "$.state",
+            "Next": "CheckPrerequisites"
+        },
+        "CheckPrerequisites": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.state",
+                    "StringEquals": "CLOSED",
+                    "Next": "Closed"
+                },
+                {
+                    "Variable": "$.parentState",
+                    "StringEquals": "ACTIVE",
+                    "Next": "Active"
+                }
+            ],
+            "Default": "Pending"
+        },
+        "Active": {
+            "Type": "Task",
+            "Resource": "${UpdateEntityStateFunction}",
+            "InputPath": "$.Input",
+            "Next": "HandleTasks"
+        },
+        "HandleTasks": {
+            "Type": "Parallel",
+            "ResultPath": "$.subworkflowTasks",
+            "End": true,
+            "Branches": [
+                {
+                    "StartAt": "Task",
+                    "States": {
+                        "Task": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::states:startExecution",
+                            "Parameters": {
+                                "StateMachineArn": "${TaskStateMachine}",
+                                "Input": {
+                                    "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
+                                }
+                            },
+                            "End": true
+                        }
+                    }
+                }
+            ]
+        },
+        "Closed": {
+            "Type": "Task",
+            "Resource": "${UpdateEntityStateFunction}",
+            "InputPath": "$.Input",
+            "End": true
+        }
+    }
+}

@@ -1,0 +1,22 @@
+{
+    "Comment": "Top-level state machine for the workflow",
+    "StartAt": "InvokePhaseStateMachine",
+    "States": {
+        "InvokePhaseStateMachine": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::states:startExecution",
+            "Parameters": {
+                "StateMachineArn": "${PhaseStateMachine}",
+                "Input": {
+                    "workflowId.$": "$.workflowId",
+                    "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
+                }
+            },
+            "Next": "Done"
+        },
+        "Done": {
+            "Type": "Pass",
+            "End": true
+        }
+    }
+}
