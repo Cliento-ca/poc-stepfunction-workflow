@@ -1,14 +1,15 @@
 import { DynamoDB } from 'aws-sdk';
 
 const item_exists_in_dynamodb = async (
-    workflowId: string,
     entityType: string,
     entityId: string,
+    parentType: string,
+    parentId: string,
 ) => {
     const params = {
         TableName: process.env.TABLE_NAME || '',
         Key: {
-            PK: workflowId,
+            PK: `${parentType}#${parentId}`,
             SK: `${entityType}#${entityId}`,
         },
     };
@@ -22,14 +23,15 @@ const item_exists_in_dynamodb = async (
 };
 
 const item_does_not_exists_in_dynamodb = async (
-    workflowId: string,
     entityType: string,
     entityId: string,
+    parentType: string,
+    parentId: string,
 ) => {
     const params = {
         TableName: process.env.TABLE_NAME || '',
         Key: {
-            PK: workflowId,
+            PK: `${parentType}#${parentId}`,
             SK: `${entityType}#${entityId}`,
         },
     };

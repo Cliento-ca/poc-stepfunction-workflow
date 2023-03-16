@@ -1,54 +1,134 @@
 {
     "Comment": "Task state machine",
-    "StartAt": "Pending",
+    "StartAt": "CheckPreRequisites",
     "States": {
-        "Pending": {
+        "CheckPreRequisites": {
             "Type": "Task",
-            "Resource": "${GetEntityStateFunction}",
+            "Resource": "${CheckIsAllClosedFunction}",
+            "ResultPath": "$.isAllPrerequisitesClosed",
             "Parameters": {
-                "workflowId.$": "$.workflowId",
-                "entityType": "task",
-                "entityId.$": "$.taskId"
+                "entityIds.$": "$.prerequisites",
+                "parentId.$": "$.parentId"
             },
-            "ResultPath": "$.taskState",
-            "Next": "CheckPending"
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException",
+                        "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 6,
+                    "BackoffRate": 2
+                }
+            ],
+            "Next": "Choice"
         },
-        "CheckPending": {
+        "Choice": {
             "Type": "Choice",
             "Choices": [
                 {
-                    "Variable": "$.taskState",
-                    "StringEquals": "Pending",
+                    "Or": [
+                        {
+                            "Not": {
+                                "Variable": "$.parentState",
+                                "StringEquals": "ACTIVE"
+                            }
+                        },
+                        {
+                            "Variable": "$.isAllPrerequisitesClosed",
+                            "BooleanEquals": false
+                        }
+                    ],
                     "Next": "Pending"
                 },
                 {
-                    "Variable": "$.taskState",
-                    "StringEquals": "Active",
+                    "And": [
+                        {
+                            "Variable": "$.parentState",
+                            "StringEquals": "ACTIVE"
+                        },
+                        {
+                            "Variable": "$.isAllPrerequisitesClosed",
+                            "BooleanEquals": true
+                        }
+                    ],
                     "Next": "Active"
                 }
+            ]
+        },
+        "Pending": {
+            "Type": "Task",
+            "Resource": "${UpdateEntityStateFunction}",
+            "Parameters": {
+                "parentId.$": "$.parentId",
+                "entityId.$": "$.entityId",
+                "status": "PENDING"
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException",
+                        "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 6,
+                    "BackoffRate": 2
+                }
             ],
-            "Default": "Closed"
+            "End": true
         },
         "Active": {
             "Type": "Task",
             "Resource": "${UpdateEntityStateFunction}",
+            "ResultPath": "$.ActiveResult",
             "Parameters": {
-                "workflowId.$": "$.workflowId",
-                "entityType": "task",
-                "entityId.$": "$.taskId",
-                "state": "Active"
+                "parentId.$": "$.parentId",
+                "entityId.$": "$.entityId",
+                "status": "ACTIVE"
             },
-            "End": true
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException",
+                        "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 6,
+                    "BackoffRate": 2
+                }
+            ],
+            "Next": "Closed"
         },
         "Closed": {
             "Type": "Task",
-            "Resource": "${UpdateEntityStateFunction}",
+            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
             "Parameters": {
-                "workflowId.$": "$.workflowId",
-                "entityType": "task",
-                "entityId.$": "$.taskId",
-                "state": "Closed"
+                "FunctionName": "${UpdateEntityStateFunction}",
+                "Payload": {
+                    "parentId.$": "$.parentId",
+                    "entityId.$": "$.entityId",
+                    "taskToken.$": "$$.Task.Token"
+                }
             },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException",
+                        "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 6,
+                    "BackoffRate": 2
+                }
+            ],
             "End": true
         }
     }

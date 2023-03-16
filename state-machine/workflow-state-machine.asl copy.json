@@ -1,0 +1,42 @@
+{
+    "Comment": "Top-level state machine for the workflow",
+    "StartAt": "GetPhases",
+    "States": {
+        "GetPhases": {
+            "Type": "Task",
+            "Resource": "${GetPhasesFunction}",
+            "InputPath": "$.workflowId",
+            "ResultPath": "$.phases",
+            "Next": "InvokePhaseStateMachines"
+        },
+
+        "InvokePhaseStateMachines": {
+            "Type": "Map",
+            "ItemsPath": "$.phases",
+            "MaxConcurrency": 1,
+            "Iterator": {
+                "StartAt": "PhaseStateMachine",
+                "States": {
+                    "PhaseStateMachine": {
+                        "Type": "Task",
+                        "Resource": "arn:aws:states:::states:startExecution",
+                        "Parameters": {
+                            "StateMachineArn": "${TaskStateMachine}",
+                            "Input": {
+                                "workflowId.$": "$.workflowId",
+                                "phaseId.$": "$.phaseId",
+                                "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
+                            }
+                        },
+                        "End": true
+                    }
+                }
+            },
+            "Next": "Done"
+        },
+        "Done": {
+            "Type": "Pass",
+            "End": true
+        }
+    }
+}

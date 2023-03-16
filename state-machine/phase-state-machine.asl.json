@@ -5,47 +5,64 @@
         "Pending": {
             "Type": "Task",
             "Resource": "${GetEntityStateFunction}",
-            "InputPath": "$.Input",
-            "ResultPath": "$.state",
-            "Next": "CheckPrerequisites"
+            "Parameters": {
+                "workflowId.$": "$.workflowId",
+                "entityType": "phase",
+                "entityId.$": "$.phaseId"
+            },
+            "ResultPath": "$.phaseState",
+            "Next": "CheckPending"
         },
-        "CheckPrerequisites": {
+        "CheckPending": {
             "Type": "Choice",
             "Choices": [
                 {
-                    "Variable": "$.state",
-                    "StringEquals": "CLOSED",
-                    "Next": "Closed"
+                    "Variable": "$.phaseState",
+                    "StringEquals": "Pending",
+                    "Next": "Pending"
                 },
                 {
-                    "Variable": "$.prerequisitePhases",
-                    "StringEquals": "CLOSED",
-                    "Next": "SubWorkflows"
+                    "Variable": "$.phaseState",
+                    "StringEquals": "Active",
+                    "Next": "Active"
                 }
             ],
-            "Default": "Pending"
+            "Default": "Closed"
         },
-        "SubWorkflows": {
-            "Type": "Parallel",
-            "ResultPath": "$.subworkflows",
-            "Branches": [
-                {
-                    "StartAt": "SubWorkflow",
-                    "States": {
-                        "SubWorkflow": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:states:::states:startExecution",
-                            "Parameters": {
-                                "StateMachineArn": "${SubWorkflowStateMachine}",
-                                "Input": {
-                                    "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
-                                }
-                            },
-                            "End": true
-                        }
+        "GetSubWorkflows": {
+            "Type": "Task",
+            "Resource": "${GetPhasesFunction}",
+            "InputPath": "$",
+            "Parameters": {
+                "workflowId.$": "$.workflowId",
+                "phaseId.$": "$.phaseId"
+            },
+            "ResultPath": "$.subWorkflows",
+            "Next": "InvokeSubWorkflowStateMachines"
+        },
+
+        "InvokeSubWorkflowStateMachines": {
+            "Type": "Map",
+            "ItemsPath": "$.subWorkflows",
+            "MaxConcurrency": 1,
+            "Iterator": {
+                "StartAt": "SubWorkflowStateMachine",
+                "States": {
+                    "SubWorkflowStateMachine": {
+                        "Type": "Task",
+                        "Resource": "arn:aws:states:::states:startExecution",
+                        "Parameters": {
+                            "StateMachineArn": "${SubWorkflowStateMachine}",
+                            "Input": {
+                                "workflowId.$": "$.workflowId",
+                                "subWorkflowId.$": "$.subWorkflowId",
+                                "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
+                            }
+                        },
+                        "End": true
                     }
                 }
-            ],
+            },
             "Next": "Active"
         },
         "Active": {

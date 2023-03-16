@@ -6,14 +6,14 @@
             "Type": "Task",
             "Resource": "${GetEntityStateFunction}",
             "InputPath": "$.Input",
-            "ResultPath": "$.state",
+            "ResultPath": "$.status",
             "Next": "CheckPrerequisites"
         },
         "CheckPrerequisites": {
             "Type": "Choice",
             "Choices": [
                 {
-                    "Variable": "$.state",
+                    "Variable": "$.status",
                     "StringEquals": "CLOSED",
                     "Next": "Closed"
                 },
@@ -29,30 +29,43 @@
             "Type": "Task",
             "Resource": "${UpdateEntityStateFunction}",
             "InputPath": "$.Input",
-            "Next": "HandleTasks"
+            "Next": "GetTasks"
         },
-        "HandleTasks": {
-            "Type": "Parallel",
-            "ResultPath": "$.subworkflowTasks",
-            "End": true,
-            "Branches": [
-                {
-                    "StartAt": "Task",
-                    "States": {
-                        "Task": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:states:::states:startExecution",
-                            "Parameters": {
-                                "StateMachineArn": "${TaskStateMachine}",
-                                "Input": {
-                                    "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
-                                }
-                            },
-                            "End": true
-                        }
+        "GetTasks": {
+            "Type": "Task",
+            "Resource": "${GetTasksFunction}",
+            "InputPath": "$",
+            "Parameters": {
+                "workflowId.$": "$.workflowId",
+                "subWorkflowId.$": "$.subWorkflowId"
+            },
+            "ResultPath": "$.tasks",
+            "Next": "InvokeTasksStateMachines"
+        },
+
+        "InvokeTasksStateMachines": {
+            "Type": "Map",
+            "ItemsPath": "$.tasks",
+            "MaxConcurrency": 1,
+            "Iterator": {
+                "StartAt": "TaskStateMachine",
+                "States": {
+                    "TaskStateMachine": {
+                        "Type": "Task",
+                        "Resource": "arn:aws:states:::states:startExecution",
+                        "Parameters": {
+                            "StateMachineArn": "${TaskStateMachine}",
+                            "Input": {
+                                "workflowId.$": "$.workflowId",
+                                "taskId.$": "$.taskId",
+                                "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
+                            }
+                        },
+                        "End": true
                     }
                 }
-            ]
+            },
+            "Next": "Closed"
         },
         "Closed": {
             "Type": "Task",

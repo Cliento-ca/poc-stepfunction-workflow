@@ -6,28 +6,29 @@ const dynamodb = new DynamoDB.DocumentClient();
 
 const { TABLE_NAME } = process.env;
 
-interface GetEntityStateEvent {
+interface GetSubWorkflowEvent {
     workflowId: string;
-    entityType: string;
-    entityId: string;
+    phaseId: string;
 }
 
-export const lambdaHandler = async (event: GetEntityStateEvent) => {
-    const { workflowId, entityType, entityId } = event;
+export const lambdaHandler = async (event: GetSubWorkflowEvent) => {
+    const { workflowId, phaseId } = event;
 
     const params = {
         TableName: TABLE_NAME || '',
-        Key: {
-            PK: workflowId,
-            SK: `${entityType}#${entityId}`,
+        IndexName: 'GSI1',
+        KeyConditionExpression: 'GSI1 = :gsi1 and PK = :pk',
+        ExpressionAttributeValues: {
+            ':gsi1': `WORKFLOW#${workflowId}`,
+            ':pk': `PHASE#${phaseId}`,
         },
     };
 
     try {
-        const result = await dynamodb.get(params).promise();
-        return result.Item?.state;
+        const res = await dynamodb.query(params).promise();
+        return res.Items;
     } catch (err) {
-        logger.error('Unable to get entity state', err as Error);
+        logger.error('Unable to get subworkflows', err as Error);
         throw err;
     }
 };

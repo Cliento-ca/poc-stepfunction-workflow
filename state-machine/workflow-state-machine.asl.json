@@ -1,15 +1,43 @@
 {
     "Comment": "Top-level state machine for the workflow",
-    "StartAt": "InvokePhaseStateMachine",
+    "StartAt": "GetTasks",
     "States": {
-        "InvokePhaseStateMachine": {
+        "GetTasks": {
             "Type": "Task",
-            "Resource": "arn:aws:states:::states:startExecution",
+            "Resource": "${GetTasksFunction}",
+            "InputPath": "$",
             "Parameters": {
-                "StateMachineArn": "${PhaseStateMachine}",
-                "Input": {
-                    "workflowId.$": "$.workflowId",
-                    "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
+                "workflowId.$": "$.workflowId",
+                "subWorkflowId.$": "$.parentId"
+            },
+            "ResultPath": "$.tasks",
+            "Next": "InvokeTasksStateMachines"
+        },
+
+        "InvokeTasksStateMachines": {
+            "Type": "Map",
+            "ItemsPath": "$.tasks",
+            "MaxConcurrency": 1,
+            "Iterator": {
+                "StartAt": "TaskStateMachine",
+                "States": {
+                    "TaskStateMachine": {
+                        "Type": "Task",
+                        "Resource": "arn:aws:states:::states:startExecution",
+                        "Parameters": {
+                            "StateMachineArn": "${TaskStateMachine}",
+                            "Input": {
+                                "workflowId.$": "$$.Execution.Input.workflowId",
+                                "subWorkflowId.$": "$$.Execution.Input.parentId",
+                                "parentState.$": "$$.Execution.Input.parentState",
+                                "entityId.$": "$.SK",
+                                "parentId.$": "$.PK",
+                                "prerequisites.$": "$.prerequisites",
+                                "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
+                            }
+                        },
+                        "End": true
+                    }
                 }
             },
             "Next": "Done"
