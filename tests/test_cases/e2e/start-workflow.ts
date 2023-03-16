@@ -3,6 +3,7 @@ import when from '../../steps/when';
 import then from '../../steps/then';
 import teardown from '../../steps/teardown';
 import init from '../../steps/init';
+import retry from 'async-retry';
 
 describe('Test case: workflow ', () => {
     let workflowId: string;
@@ -26,9 +27,16 @@ describe('Test case: workflow ', () => {
         });
 
         it('Should activate the first task', async () => {
-            const fromDB = await then.item_exists_in_dynamodb('TASK', '1', 'SUBWORKFLOW', '1');
-            //Todo: Code execute faster then the value is updated in the db.
-            expect(fromDB!.status).toEqual('ACTIVE');
+            await retry(
+                async () => {
+                    const task = await then.item_exists_in_dynamodb('TASK#1', 'SUBWORKFLOW#1');
+                    expect(task!.status).toEqual('ACTIVE');
+                },
+                {
+                    retries: 3,
+                    maxTimeout: 1000,
+                },
+            );
         });
 
         // describe('When we close the originator task', () => {
