@@ -1,4 +1,5 @@
 import { DynamoDB } from 'aws-sdk';
+import AWS, { StepFunctions } from 'aws-sdk';
 
 const item_exists_in_dynamodb = async (entityId: string, parentId: string) => {
     const params = {
@@ -17,17 +18,12 @@ const item_exists_in_dynamodb = async (entityId: string, parentId: string) => {
     return response.Item;
 };
 
-const item_does_not_exists_in_dynamodb = async (
-    entityType: string,
-    entityId: string,
-    parentType: string,
-    parentId: string,
-) => {
+const item_does_not_exists_in_dynamodb = async (entityId: string, parentId: string) => {
     const params = {
         TableName: process.env.TABLE_NAME || '',
         Key: {
-            PK: `${parentType}#${parentId}`,
-            SK: `${entityType}#${entityId}`,
+            PK: parentId,
+            SK: entityId,
         },
     };
 
@@ -37,10 +33,13 @@ const item_does_not_exists_in_dynamodb = async (
 
     return response.Item;
 };
-const execution_output_is = async (executionArn, expectation) => {
-    const resp = await StepFunctions.describeExecution({
-        executionArn,
-    }).promise();
+const execution_output_is = async (executionArn: string, expectation: any) => {
+    const stepFunctions = new StepFunctions({ region: process.env.AWS_REGION });
+    const resp = await stepFunctions
+        .describeExecution({
+            executionArn,
+        })
+        .promise();
 
     if (resp.status === 'FAILED') {
         throw new ExecutionFailedError(executionArn);
@@ -51,10 +50,13 @@ const execution_output_is = async (executionArn, expectation) => {
     return resp.output;
 };
 
-const execution_status_is = async (executionArn, expectation) => {
-    const resp = await StepFunctions.describeExecution({
-        executionArn,
-    }).promise();
+const execution_status_is = async (executionArn: string, expectation: any) => {
+    const stepFunctions = new StepFunctions({ region: process.env.AWS_REGION });
+    const resp = await stepFunctions
+        .describeExecution({
+            executionArn,
+        })
+        .promise();
 
     expect(resp.status).toEqual(expectation);
 };
