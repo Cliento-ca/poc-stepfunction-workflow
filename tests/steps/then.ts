@@ -1,5 +1,5 @@
 import { DynamoDB } from 'aws-sdk';
-import AWS, { StepFunctions } from 'aws-sdk';
+import { StepFunctions } from 'aws-sdk';
 
 const item_exists_in_dynamodb = async (entityId: string, parentId: string) => {
     const params = {

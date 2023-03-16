@@ -1,4 +1,4 @@
-import AWS, { StepFunctions } from 'aws-sdk';
+import { StepFunctions } from 'aws-sdk';
 
 const APP_ROOT = '../../';
 

@@ -13,7 +13,7 @@ describe('Test case: workflow ', () => {
     });
 
     afterAll(async () => {
-        // await teardown.a_simple_workflow();
+        await teardown.a_workflow(workflowId);
     });
 
     describe('When we start an execution with an Active parent', () => {
@@ -38,18 +38,5 @@ describe('Test case: workflow ', () => {
                 },
             );
         });
-
-        // describe('When we close the originator task', () => {
-        //     beforeAll(async () => {
-        //         // await when.we_close_a_task(workflowId, taskId);
-        //     });
-
-        //     it('Should update task status to "CLOSE"', async () => {
-        //         const fromDB = await then.item_exists_in_dynamodb('TASK', '1', 'PHASE', '1');
-        //         expect(fromDB!.status).toEqual('CLOSE');
-        //     });
-
-        //     it('Should activate the rest of the workflow', async () => {});
-        // });
     });
 });
