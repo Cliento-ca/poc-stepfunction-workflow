@@ -10,19 +10,7 @@
                 "entityIds.$": "$.prerequisites",
                 "parentId.$": "$.parentId"
             },
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "Lambda.ServiceException",
-                        "Lambda.AWSLambdaException",
-                        "Lambda.SdkClientException",
-                        "Lambda.TooManyRequestsException"
-                    ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 6,
-                    "BackoffRate": 2
-                }
-            ],
+
             "Next": "Choice"
         },
         "Choice": {
@@ -66,19 +54,7 @@
                 "entityId.$": "$.entityId",
                 "status": "PENDING"
             },
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "Lambda.ServiceException",
-                        "Lambda.AWSLambdaException",
-                        "Lambda.SdkClientException",
-                        "Lambda.TooManyRequestsException"
-                    ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 6,
-                    "BackoffRate": 2
-                }
-            ],
+
             "End": true
         },
         "Active": {
@@ -90,19 +66,7 @@
                 "entityId.$": "$.entityId",
                 "status": "ACTIVE"
             },
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "Lambda.ServiceException",
-                        "Lambda.AWSLambdaException",
-                        "Lambda.SdkClientException",
-                        "Lambda.TooManyRequestsException"
-                    ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 6,
-                    "BackoffRate": 2
-                }
-            ],
+
             "Next": "Closed"
         },
         "Closed": {
@@ -116,19 +80,6 @@
                     "taskToken.$": "$$.Task.Token"
                 }
             },
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "Lambda.ServiceException",
-                        "Lambda.AWSLambdaException",
-                        "Lambda.SdkClientException",
-                        "Lambda.TooManyRequestsException"
-                    ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 6,
-                    "BackoffRate": 2
-                }
-            ],
             "End": true
         }
     }

@@ -3,9 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const an_item = async (
-    entityType: string,
     entityId: string,
-    parentType: string,
     parentId: string,
     workflowId: string,
     status: 'ACTIVE' | 'PENDING' | 'CLOSED',
@@ -13,9 +11,9 @@ const an_item = async (
     const params = {
         TableName: process.env.TABLE_NAME || '',
         Item: {
-            PK: `${parentType}#${parentId}`,
-            SK: `${entityType}#${entityId}`,
-            GSI1: `WORKFLOW#${workflowId}`,
+            PK: parentId,
+            SK: entityId,
+            GSI1: workflowId,
             status: status,
         },
     };
@@ -23,7 +21,7 @@ const an_item = async (
 
     await dynamodb.put(params).promise();
 
-    console.log(`[${entityType}#${entityId}]  is created`);
+    console.log(`[${entityId}]  is created`);
 };
 /**
  * Creates a workflow with data from simple.csv

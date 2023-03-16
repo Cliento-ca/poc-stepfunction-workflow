@@ -15,7 +15,7 @@ describe('Given a simple workflow', () => {
 
     describe(`When we invoke check all closed`, () => {
         it(`Should return false for prerequisites TASK#1`, async () => {
-            const res = await when.we_invoke_check_all_closed('TASK', ['1'], 'SUBWORKFLOW', '1');
+            const res = await when.we_invoke_check_all_closed(['TASK#1'], 'SUBWORKFLOW#1');
             expect(res).toBe(false);
         });
     });

@@ -1,22 +1,17 @@
 import { DynamoDB } from 'aws-sdk';
 
-const an_item = async (
-    entityType: string,
-    entityId: string,
-    parentType: string,
-    parentId: string,
-) => {
+const an_item = async (entityId: string, parentId: string) => {
     const params = {
         TableName: process.env.TABLE_NAME || '',
         Key: {
-            PK: `${parentType}#${parentId}`,
-            SK: `${entityType}#${entityId}`,
+            PK: `${parentId}`,
+            SK: `${entityId}`,
         },
     };
     const dynamodb = new DynamoDB.DocumentClient();
     await dynamodb.delete(params).promise();
 
-    console.log(`[${entityType}#${entityId}] - task is deleted`);
+    console.log(`[${entityId}] - task is deleted`);
 };
 
 const a_workflow = async (workflowId: string) => {
@@ -26,7 +21,7 @@ const a_workflow = async (workflowId: string) => {
             IndexName: 'GSI1',
             KeyConditionExpression: `GSI1 = :pk`,
             ExpressionAttributeValues: {
-                ':pk': `WORKFLOW#${workflowId}`,
+                ':pk': workflowId,
             },
         };
         const dynamodb = new DynamoDB.DocumentClient();

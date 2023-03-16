@@ -7,35 +7,20 @@ const viaHandler = async (event: any, functionName: string) => {
     return await handler(event, {});
 };
 
-const we_invoke_get_entity_state = async (
-    entityType: string,
-    entityId: string,
-    parentType: string,
-    parentId: string,
-) => {
-    return await viaHandler({ entityType, entityId, parentType, parentId }, 'get-entity-status');
-};
-
 const we_invoke_update_entity_state = async (
-    entityType: string,
     entityId: string,
-    parentType: string,
     parentId: string,
     status: 'PENDING' | 'ACTIVE' | 'CLOSED',
 ) => {
-    return await viaHandler(
-        { entityType, entityId, parentType, parentId, status },
-        'update-entity-status',
-    );
+    return await viaHandler({ entityId, parentId, status }, 'update-entity-status');
 };
 
 const we_invoke_check_all_closed = async (
-    entityType: string,
     entityIds: string[],
-    parentType: string,
+
     parentId: string,
 ) => {
-    return await viaHandler({ entityType, entityIds, parentType, parentId }, 'check-all-closed');
+    return await viaHandler({ entityIds, parentId }, 'check-all-closed');
 };
 
 const we_invoke_get_phases = async (workflowId: string) => {
@@ -64,7 +49,6 @@ const we_start_execution = async (stateMachineArn: string, input: any) => {
 };
 
 const when = {
-    we_invoke_get_entity_state,
     we_invoke_update_entity_state,
     we_invoke_check_all_closed,
     we_invoke_get_phases,
